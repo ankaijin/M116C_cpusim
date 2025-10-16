@@ -13,6 +13,7 @@ using namespace std;
 Add all the required standard and developed libraries here
 */
 #include <vector>
+#include <bitset>
 
 /*
 Put/Define any helper function/definitions you need here
@@ -27,8 +28,8 @@ int main(int argc, char* argv[])
 	Each line in the input file is stored as an hex and is 1 byte (each four lines are one instruction). You need to read the file line by line and store it into the memory. You may need a mechanism to convert these values to bits so that you can read opcodes, operands, etc.
 	*/
 
-	vector<string> instMem;
-
+	vector<string> instMem; // instruction memory in hex string
+	vector<bitset<32> > instMemBin; // instruction memory in binary
 
 	if (argc < 2) {
 		//cout << "No file name entered. Exiting...";
@@ -40,20 +41,35 @@ int main(int argc, char* argv[])
 		cout<<"error opening file\n";
 		return 0; 
 	}
+
 	string line;
 	int i = 0;
 	while (infile) {
 			// read file instructions are in little endian format
 			string temp[4];
+			// reverse little endian to big endian
 			for (int j = 0; j < 4; j++) {
 				infile>>line;
-				temp[3 - j] = line; // be careful about hex
+				temp[3 - j] = line;
 			}
 			instMem.push_back(temp[0] + temp[1] + temp[2] + temp[3]);
 			i += 1;
-			cout<<instMem[i-1]<<endl;
+			cout<< instMem[i - 1] <<endl;
 		}
-	int maxPC= i; 
+	int maxPC = i;
+	cout << endl;
+
+	for (int i = 0; i < maxPC; i++) {
+		stringstream ss;
+		ss << hex << instMem[i];
+		unsigned int hexValue;
+		ss >> hexValue;
+		// convert hex to binary
+		bitset<32> binary(hexValue);
+		// save binary back to instMem
+		instMemBin.push_back(binary);
+		// cout<<instMemBin[i]<<endl;
+	}
 
 	/* Instantiate your CPU object here.  CPU class is the main class in this project that defines different components of the processor.
 	CPU class also has different functions for each stage (e.g., fetching an instruction, decoding, etc.).
@@ -63,23 +79,24 @@ int main(int argc, char* argv[])
 	// make sure to create a variable for PC and resets it to zero (e.g., unsigned int PC = 0); 
 
 	/* OPTIONAL: Instantiate your Instruction object here. */
-	//Instruction myInst; 
+	Instruction currInst; 
 	
 	bool done = true;
 	while (done == true) // processor's main loop. Each iteration is equal to one clock cycle.  
 	{
-		//fetch
-		
+		// fetch
+		currInst.instr = instMemBin[myCPU.readPC()];
 
 		// decode
 		
+		
 		// ... 
 		myCPU.incPC();
-		if (myCPU.readPC() > maxPC)
+		if (myCPU.readPC() >= maxPC)	// changed from > to >=
 			break;
 	}
-	int a0 =0;
-	int a1 =0;  
+	int a0 = 0;
+	int a1 = 0;  
 	// print the results (you should replace a0 and a1 with your own variables that point to a0 and a1)
 	cout << "(" << a0 << "," << a1 << ")" << endl;
 	
