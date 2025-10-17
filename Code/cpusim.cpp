@@ -92,7 +92,6 @@ int main(int argc, char* argv[])
 
 		// decode
 		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
-		
 		// ... 
 		myCPU.incPC();
 		if (myCPU.readPC() >= maxPC)	// changed from > to >=

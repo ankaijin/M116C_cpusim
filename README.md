@@ -1,2 +1,1 @@
-# M116C_cpusim
-Designing a simple CPU simulator
+# ECE M116C Project 1: CPU Simulator
