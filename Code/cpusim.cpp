@@ -78,8 +78,8 @@ int main(int argc, char* argv[])
 	CPU class also has different functions for each stage (e.g., fetching an instruction, decoding, etc.).
 	*/
 
-	CPU myCPU;  // call the approriate constructor here to initialize the processor...  
-	// make sure to create a variable for PC and resets it to zero (e.g., unsigned int PC = 0); 
+	CPU myCPU(instMemBin);  // call the approriate constructor here to initialize the processor...  
+	// make sure to create a variable for PC and resets it to zero (e.g., unsigned int PC = 0);
 
 	/* OPTIONAL: Instantiate your Instruction object here. */
 	instruction currInst;
@@ -88,17 +88,18 @@ int main(int argc, char* argv[])
 	while (done == true) // processor's main loop. Each iteration is equal to one clock cycle.  
 	{
 		// fetch
-		currInst.mcode = instMemBin[myCPU.readPC()];
+		currInst.mcode = myCPU.fetchInstruction();
 
 		// decode
 		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
+		cout << "Opcode: " << bitset<7>(currInst.opcode) << endl;
 		// ... 
 		myCPU.incPC();
 		if (myCPU.readPC() >= maxPC)	// changed from > to >=
 			break;
 	}
 	int a0 = 0;
-	int a1 = 0;  
+	int a1 = 0;
 	// print the results (you should replace a0 and a1 with your own variables that point to a0 and a1)
 	cout << "(" << a0 << "," << a1 << ")" << endl;
 	
