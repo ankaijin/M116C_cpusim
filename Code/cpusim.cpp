@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
 	*/
 
 	vector<string> instMem; // instruction memory in hex string
-	vector<bitset<32> > instMemBin; // instruction memory in binary
+	vector<uint32_t> instMemBin; // instruction memory in binary
 
 	if (argc < 2) {
 		//cout << "No file name entered. Exiting...";
@@ -49,23 +49,26 @@ int main(int argc, char* argv[])
 			string temp[4];
 			// reverse little endian to big endian
 			for (int j = 0; j < 4; j++) {
-				infile>>line;
+				infile >> line;
 				temp[3 - j] = line;
 			}
 			instMem.push_back(temp[0] + temp[1] + temp[2] + temp[3]);
 			i += 1;
-			cout<< instMem[i - 1] <<endl;
+			cout << instMem[i - 1] << endl;
 		}
 	int maxPC = i;
 	cout << endl;
 
 	for (int i = 0; i < maxPC; i++) {
 		stringstream ss;
-		ss << hex << instMem[i];
-		unsigned int hexValue;
-		ss >> hexValue;
+		uint32_t binary;
+		
 		// convert hex to binary
-		bitset<32> binary(hexValue);
+		ss << hex << instMem[i];
+		ss >> binary;
+		bitset<32> tempBin(binary);
+
+		binary = static_cast<uint32_t>(tempBin.to_ulong());
 		// save binary back to instMem
 		instMemBin.push_back(binary);
 		// cout<<instMemBin[i]<<endl;
@@ -79,16 +82,16 @@ int main(int argc, char* argv[])
 	// make sure to create a variable for PC and resets it to zero (e.g., unsigned int PC = 0); 
 
 	/* OPTIONAL: Instantiate your Instruction object here. */
-	Instruction currInst; 
+	instruction currInst;
 	
 	bool done = true;
 	while (done == true) // processor's main loop. Each iteration is equal to one clock cycle.  
 	{
 		// fetch
-		currInst.instr = instMemBin[myCPU.readPC()];
+		currInst.mcode = instMemBin[myCPU.readPC()];
 
 		// decode
-		
+		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
 		
 		// ... 
 		myCPU.incPC();

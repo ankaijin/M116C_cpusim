@@ -1,10 +1,5 @@
 #include "CPU.h"
 
-Instruction::Instruction(bitset <32> fetch)
-{
-	instr = fetch; // initialize the instruction
-}
-
 CPU::CPU()
 {
 	PC = 0; //set PC to 0
@@ -16,11 +11,6 @@ CPU::CPU()
 	{
 		registerFile[i] = 0;
 	}
-	// initialize all values to an invalid value
-	rs1 = -1;
-	rs2 = -1;
-	rd = -1;
-	imm = -1;
 }
 
 unsigned long CPU::readPC()
