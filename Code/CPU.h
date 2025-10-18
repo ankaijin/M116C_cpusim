@@ -75,7 +75,7 @@ union instruction {
 
 class CPU; // forward declaration
 
-// Controller struct
+// Controller class
 class Controller {
     friend class CPU;
     Controller();
@@ -94,6 +94,10 @@ public:
     void setControlSignals(string instrType); // set control signals based on opcode
 };
 
+// ALU Controller class
+// should send 4-bit ALU control signal
+
+
 class CPU {
 private:
     // DATAPATH COMPONENTS
@@ -103,21 +107,23 @@ private:
 	int registerFile[32]; // 31 registers, 32 bits each, don't use 0th element
 	unsigned long PC; // pc
 
-    // ALU CONTROLLER COMPONENTS
 public:
     // Constructor that initializes instruction memory and PC
     CPU(vector<uint32_t> iMemory);
     Controller controller;
 	unsigned long readPC();
 	void incPC();
-	// fetch instruction
+	// fetch instruction (from iMemory)
     uint32_t fetchInstruction();
-	// decode instruction (Controller)
+    // Immediate Generator function (based on instruction type)
+    // group opcodes based on 6 instruction types, re-organize bits, return 32-bit immediate
+    // look at which opcodes are supported
+    uint32_t immGen(instruction instr);
 
-	// execute instruction
-	// memory access
-	// write back
-	// update PC
+    // aluSrcMux (selects between register value and immediate for ALU input)
+    // memory access (determined by MemWrite signal)
+    // memToRegMux (selects between ALU result and memory data for write back)
+    // branchMux (selects next PC based on branch decision)
 };
 
 // add other functions and objects here

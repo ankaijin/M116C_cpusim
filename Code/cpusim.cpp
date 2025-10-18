@@ -71,7 +71,6 @@ int main(int argc, char* argv[])
 		binary = static_cast<uint32_t>(tempBin.to_ulong());
 		// save binary back to instMem
 		instMemBin.push_back(binary);
-		// cout<<instMemBin[i]<<endl;
 	}
 
 	/* Instantiate your CPU object here.  CPU class is the main class in this project that defines different components of the processor.
@@ -92,7 +91,11 @@ int main(int argc, char* argv[])
 
 		// decode
 		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
-		cout << "Opcode: " << bitset<7>(currInst.opcode) << endl;
+		string type = myCPU.controller.getInstrType(currInst);
+		cout << "Type: " << type << endl;
+
+		// cout << "Immediate: " << static_cast<int32_t>(myCPU.immGen(currInst)) << endl;
+
 		// ... 
 		myCPU.incPC();
 		if (myCPU.readPC() >= maxPC)	// changed from > to >=

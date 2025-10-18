@@ -12,7 +12,7 @@ string Controller::getInstrType(instruction instr) {
 		case 0b1100011: return "B"; // B-type
 		case 0b0110111: return "U"; // U-type
 		case 0b1101111: return "J"; // J-type
-		default: return "X"; // Unknown
+		default: return "Invalid"; // Invalid opcode
 	}
 }
 
@@ -33,7 +33,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 0;
 		branch = 0;
-		aluOp = 0; // ALU operation determined by funct3
+		aluOp = 0; // ALU operation determined by funct3 ??
 	}
 	else if (instrType == "Load") {
 		aluSrc = 1;
@@ -96,4 +96,34 @@ uint32_t CPU::fetchInstruction()
 {
 	if (PC < iMemory.size()) return iMemory[PC];
 	else return -1;
+}
+
+uint32_t CPU::immGen(instruction instr) {	// check for accuracy
+	uint32_t immediate = 0;
+	switch (instr.opcode) {
+		case 0b0010011: // I-type
+		case 0b0000011: // Load
+		case 0b1100111: // JALR
+			immediate = (instr.i.imm);
+			// Sign-extend
+			if (immediate & 0x800) immediate |= 0xFFFFF000;
+			break;
+		case 0b0100011: // S-type
+			immediate = (instr.s.imm11_5 << 5) | (instr.s.imm4_0);
+			// Sign-extend
+			if (immediate & 0x800) immediate |= 0xFFFFF000;
+			break;
+		case 0b1100011: // B-type
+			immediate = (instr.b.imm12 << 12) | (instr.b.imm10_5 << 5) |
+				  (instr.b.imm4_1 << 1) | (instr.b.imm11 << 11);	// seems legit
+			// Sign-extend
+			if (immediate & 0x1000) immediate |= 0xFFFFE000;
+			break;
+		case 0b0110111: // U-type
+			immediate = (instr.u.imm31_12 << 12);
+			break;
+		default:
+			break;
+	}
+	return immediate;
 }
