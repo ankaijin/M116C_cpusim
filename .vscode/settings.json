@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "ios": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "vector": "cpp"
     }
 }

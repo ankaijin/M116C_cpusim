@@ -78,6 +78,9 @@ int main(int argc, char* argv[])
 	*/
 
 	CPU myCPU(instMemBin);  // call the approriate constructor here to initialize the processor...  
+	myCPU.controller.cpu = &myCPU;
+	myCPU.aluController.cpu = &myCPU;
+
 	// make sure to create a variable for PC and resets it to zero (e.g., unsigned int PC = 0);
 
 	/* OPTIONAL: Instantiate your Instruction object here. */
@@ -91,12 +94,14 @@ int main(int argc, char* argv[])
 
 		// decode
 		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
-		string type = myCPU.controller.getInstrType(currInst);
-		cout << "Type: " << type << endl;
+		myCPU.controller.setControlSignals(myCPU.controller.getInstrType(currInst));
 
-		// cout << "Immediate: " << static_cast<int32_t>(myCPU.immGen(currInst)) << endl;
+		cout << "Immediate: " << myCPU.immGen(currInst) << endl;
+		int aluInput2 = myCPU.aluSrcMux(currInst.r.rs2, myCPU.immGen(currInst));
+		cout << "Rs2 num: " <<currInst.r.rs2 << endl;
+		cout << "ALU Input 2: " << aluInput2 << endl;
 
-		// ... 
+		// default PC += 4
 		myCPU.incPC();
 		if (myCPU.readPC() >= maxPC)	// changed from > to >=
 			break;

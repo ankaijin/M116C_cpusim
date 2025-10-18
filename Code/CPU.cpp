@@ -3,6 +3,8 @@
 Controller::Controller() : cpu(nullptr), branch(0), memRead(0), memToReg(0),
         aluOp(0), memWrite(0), aluSrc(0), regWrite(0) {}
 
+ALUController::ALUController() : cpu(nullptr), ALUCtrlSig(-1) {}
+
 string Controller::getInstrType(instruction instr) {
 	switch (instr.opcode) {
 		case 0b0110011: return "R"; // R-type
@@ -33,7 +35,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 0;
 		branch = 0;
-		aluOp = 0; // ALU operation determined by funct3 ??
+		aluOp = 3; // ALU operation determined by funct3 ??
 	}
 	else if (instrType == "Load") {
 		aluSrc = 1;
@@ -62,9 +64,16 @@ void Controller::setControlSignals(string instrType) {
 		branch = 1;
 		aluOp = 1; // ALU does subtraction for comparison
 	}
-	else {
-		// For U-type and J-type, control signals can be set as needed
+	else if (instrType == "U") {	// LUI only
+		aluSrc = 1;
+		regWrite = 1;
+		memRead = 0;
+		memWrite = 0;
+		memToReg = 0;
+		branch = 0;
+		aluOp = 4; // ALU does left shift for address calculation
 	}
+	// do nothing for invalid instruction type
 }
 
 CPU::CPU(vector<uint32_t> iMem) : iMemory(iMem), PC(0)
@@ -98,7 +107,7 @@ uint32_t CPU::fetchInstruction()
 	else return -1;
 }
 
-uint32_t CPU::immGen(instruction instr) {	// check for accuracy
+int32_t CPU::immGen(instruction instr) {
 	uint32_t immediate = 0;
 	switch (instr.opcode) {
 		case 0b0010011: // I-type
@@ -125,5 +134,18 @@ uint32_t CPU::immGen(instruction instr) {	// check for accuracy
 		default:
 			break;
 	}
-	return immediate;
+	return static_cast<int32_t>(immediate);
+}
+
+int CPU::rs1data(unsigned int rs1) {
+	return registerFile[rs1];
+}
+
+int CPU::rs2data(unsigned int rs2) {
+	return registerFile[rs2];
+}
+
+int CPU::aluSrcMux(int rs2, int immValue) {
+	if (controller.aluSrc == 0) return rs2data(rs2);
+	else return immValue;
 }
