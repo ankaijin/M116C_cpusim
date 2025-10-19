@@ -113,7 +113,14 @@ int main(int argc, char* argv[])
 		cout << "ALU Result: " << aluResult << endl;
 
 		// memory access
-		
+		if (controller.memRead == 1) {
+			int32_t memData = myCPU.readDataMem(static_cast<uint32_t>(aluResult), currInst.r.funct3);
+			cout << "Memory Read Data: " << memData << endl;
+		}
+		if (controller.memWrite == 1) {
+			myCPU.writeDataMem(static_cast<uint32_t>(aluResult), myCPU.rs2data(currInst.r.rs2));
+			cout << "Memory Write at Address: " << aluResult << " Data: " << myCPU.rs2data(currInst.r.rs2) << endl;
+		}
 
 		// write back
 

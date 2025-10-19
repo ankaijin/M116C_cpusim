@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <unordered_map>
 using namespace std;
 
 // Instruction types
@@ -114,7 +115,7 @@ class ALUController {
 class CPU {
     private:
         // DATAPATH COMPONENTS
-        int32_t dMemory[4096]; // data memory byte addressable in little endian fashion;
+        unordered_map<uint32_t, uint8_t> dataMemory; // data memory, map address to byte (little-endian)
         vector<uint32_t> iMemory; // instruction memory in binary
         int32_t registerFile[32]; // 32 registers, 32 bits each, don't write to 0th element
         unsigned long PC; // pc
@@ -135,8 +136,9 @@ class CPU {
         int32_t rs2data(unsigned int rs2);
         // ALU operation (takes in two operands and ALU control signal)
         int32_t ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluControl);
-        // memory access (determined by MemWrite signal)
-        int32_t readDataMem(int32_t address);
+        // memory access (determined by MemWrite and MemRead signal)
+        int32_t readDataMem(uint32_t address, int funct3);
+        void writeDataMem(uint32_t address, int32_t data);
         // memToRegMux (selects between ALU result and memory data for write back)
         
         // branchMux (selects next PC based on branch decision)

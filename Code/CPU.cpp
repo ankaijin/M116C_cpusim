@@ -128,10 +128,6 @@ unsigned int ALUController::setALUCtrlSig(int funct3, int aluOp) {
 
 CPU::CPU(vector<uint32_t> iMem) : iMemory(iMem), PC(0)
 {
-	for (int i = 0; i < 4096; i++) // copy instrMEM
-	{
-		dMemory[i] = (0);
-	}
 	for (int i = 0; i < 32; i++) // initialize registers to 0
 	{
 		registerFile[i] = 0;
@@ -233,5 +229,30 @@ int32_t CPU::ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluCo
 		default:
 			// Unknown control; return 0 as a safe default ??
 			return 0;
+	}
+}
+
+int32_t CPU::readDataMem(uint32_t address, int funct3) {	// check
+	int32_t data = 0;
+	if (funct3 == 0b010) {
+		// Read 4 bytes from dataMemory (little-endian)
+		for (int i = 0; i < 4; i++) {
+			data |= (static_cast<int32_t>(dataMemory[address + i]) << (i * 8));
+		}
+	}
+	else if (funct3 == 0b100) {
+		// Read 1 byte, unsigned, from dataMemory (little-endian)
+		data = static_cast<uint8_t>(dataMemory[address]);
+		// zero-extend
+		data = static_cast<uint32_t>(data);
+	}
+	// return 32-bit data
+	return static_cast<int32_t>(data);
+}
+
+void CPU::writeDataMem(uint32_t address, int32_t data) {	// check
+	// Write 4 bytes to dataMemory (little-endian)
+	for (int i = 0; i < 4; i++) {
+		dataMemory[address + i] = static_cast<uint8_t>((data >> (i * 8)) & 0xFF);
 	}
 }
