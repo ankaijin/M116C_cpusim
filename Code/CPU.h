@@ -83,6 +83,7 @@ class Controller {
     public:
         Controller();
         CPU* cpu;
+        int jalr;
         int branch;
         int memRead;
         int memToReg;
@@ -98,6 +99,12 @@ class Controller {
         int aluSrcMux(int rs2, int immValue);
         // memToRegMux (selects between ALU result and memory data for write back)
         int32_t memToRegMux(int32_t aluResult, int32_t memData);
+        // branchMux (selects next PC from PC+4 or PC+immediate)
+        unsigned long branchMux(int32_t aluResult, int32_t immValue);
+        // pcToRegMux (selects between ALU result/memory and PC+4 for write back to rd)
+        int32_t pcToRegMux(int32_t dataToWrite, unsigned long pcIncr4);
+        // aluToPCMux (selects between ALU result and PC + offset for next PC)
+        unsigned long aluToPCMux(int32_t aluResult, unsigned long pcAndOffset);
 };
 
 // ALU Controller class
@@ -128,7 +135,7 @@ class CPU {
 
         // CPU FUNCTIONS
         unsigned long readPC();
-        void incPC();
+        void setPC(unsigned long programCount);
         // fetch instruction (from iMemory)
         uint32_t fetchInstruction();
         // Immediate Generator function (takes 32-bit instruction as input)
@@ -143,7 +150,6 @@ class CPU {
         void writeDataMem(uint32_t address, int32_t data, int funct3);
         // write back output of memToRegMux
         int32_t writeBackToReg(unsigned int rd, int32_t write);
-        // branchMux (selects next PC based on branch decision)
 
         // return values
         int32_t a0val();

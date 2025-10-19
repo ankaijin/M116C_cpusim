@@ -25,6 +25,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 0;
 		branch = 0;
+		jalr = 0;
 		aluOp = 2; // ALU operation determined by funct3 and funct7 fields
 	}
 	else if (instrType == "I") {
@@ -34,6 +35,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 0;
 		branch = 0;
+		jalr = 0;
 		aluOp = 3; // ALU operation determined by funct3 ??
 	}
 	else if (instrType == "Load") {
@@ -43,6 +45,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 1;
 		branch = 0;
+		jalr = 0;
 		aluOp = 0; // ALU does addition for address calculation
 	}
 	else if (instrType == "JALR") {
@@ -51,7 +54,8 @@ void Controller::setControlSignals(string instrType) {
 		memRead = 0;
 		memWrite = 0;
 		memToReg = 0;
-		branch = 1;	// branch is 1
+		jalr = 1;
+		branch = 0;	// branch is 0
 		aluOp = 0; // use same aluOp as load and store instrs. (addition)
 	}
 	else if (instrType == "S") {
@@ -61,6 +65,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 1;
 		memToReg = 0; // don't care
 		branch = 0;
+		jalr = 0;
 		aluOp = 0; // ALU does addition for address calculation
 	}
 	else if (instrType == "B") {
@@ -70,6 +75,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 0; // don't care
 		branch = 1;
+		jalr = 0;
 		aluOp = 1; // ALU does subtraction for comparison
 	}
 	else if (instrType == "U") {	// LUI only
@@ -79,6 +85,7 @@ void Controller::setControlSignals(string instrType) {
 		memWrite = 0;
 		memToReg = 0;
 		branch = 0;
+		jalr = 0;
 		aluOp = 4; // ALU does left shift for address calculation
 	}
 	// do nothing for invalid instruction type
@@ -93,6 +100,23 @@ int Controller::aluSrcMux(int rs2, int immValue) {
 int32_t Controller::memToRegMux(int32_t aluResult, int32_t memData) {
 	if (memToReg == 1) return memData;
 	else return aluResult;
+}
+
+// CHECK THIS SECTION
+// increment PC by 1 or 4 ???
+unsigned long Controller::branchMux(int32_t aluResult, int32_t immValue) {
+	if (branch == 1 && aluResult != 0) return cpu->readPC() + (immValue); // BNE
+	else return cpu->readPC() + 4;
+}
+
+int32_t Controller::pcToRegMux(int32_t dataToWrite, unsigned long pcIncr4) {
+	if (jalr == 1) return static_cast<int32_t>(pcIncr4); // PC + 4
+	else return dataToWrite;
+}
+
+unsigned long Controller::aluToPCMux(int32_t aluResult, unsigned long pcAndOffset) {
+	if (jalr == 1) return static_cast<unsigned long>(aluResult);	// should always be positive
+	else return pcAndOffset; // PC + 4 or PCC + immediate from branchMux
 }
 
 ALUController::ALUController() : cpu(nullptr), ALUCtrlSig(-1) {}
@@ -144,16 +168,16 @@ unsigned long CPU::readPC()
 	return PC;
 }
 
-void CPU::incPC()
+void CPU::setPC(unsigned long programCount)
 {
-	PC++;
+	PC = programCount;
 }
 
 // Add other functions here ...
 uint32_t CPU::fetchInstruction()
 {
-	if (PC < iMemory.size()) return iMemory[PC];
-	else return -1;
+	if (PC / 4 < iMemory.size()) return iMemory[PC / 4];
+	else return 0;	// return 0 if PC is out of bounds
 }
 
 int32_t CPU::immGen(instruction instr) {

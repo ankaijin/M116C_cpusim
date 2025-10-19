@@ -49,13 +49,17 @@ int main(int argc, char* argv[])
 		// reverse little endian to big endian
 		while (true) {
 			string b0, b1, b2, b3;        // b0 = least significant byte on disk
-			if (!(infile >> b0 >> b1 >> b2 >> b3)) break;  // stop cleanly at EOF/short read
+			if (!(infile >> b0 >> b1 >> b2 >> b3)) {
+				instMem.push_back("00000000"); // pad with zeros
+				cout << instMem.back() << '\n';
+				break;  // stop cleanly at EOF/short read
+			}
 			instMem.push_back(b3 + b2 + b1 + b0);          // big-endian string
 			cout << instMem.back() << '\n';
 			i += 1;
 		}
 	}
-	int maxPC = i;
+	int maxPC = i * 4; // max PC in terms of number of instructions
 	cout << endl;
 
 	for (int i = 0; i < maxPC; i++) {
@@ -92,13 +96,13 @@ int main(int argc, char* argv[])
 	{
 		// fetch
 		currInst.mcode = myCPU.fetchInstruction();
-		if (currInst.mcode == 0) {
+		if (currInst.r.opcode == 0) {
 			break; // halt on all zeros instruction
 		}
 
 		// decode
 		cout << "==========================" << endl;
-		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
+		cout << "PC: " << hex << myCPU.readPC() << " Instruction: " << dec << bitset<32>(currInst.mcode) << endl;
 		controller.setControlSignals(controller.getInstrType(currInst));
 
 		// execute
@@ -116,7 +120,7 @@ int main(int argc, char* argv[])
 		int32_t aluResult = myCPU.ALUOperation(aluInput1, aluInput2, aluCtrl5bit);
 		cout << "ALU Result: " << aluResult << endl;
 
-		// memory access (Load and Store) NEED TO TEST
+		// memory access (Load and Store)
 		int32_t memData = 0;
 		if (controller.memRead == 1) {
 			memData = myCPU.readDataMem(static_cast<uint32_t>(aluResult), currInst.r.funct3);
@@ -127,17 +131,18 @@ int main(int argc, char* argv[])
 			cout << "Memory Write at Address: " << aluResult << " Data: " << myCPU.rs2data(currInst.r.rs2) << endl;
 		}
 
-		// write back (if mem not read, aluResult is selected anyway)
+		// write back (if mem not read, aluResult is always selected)
 		int32_t writeData = controller.memToRegMux(aluResult, memData);
+		writeData = controller.pcToRegMux(writeData, myCPU.readPC() + 4);	// (NEW) accommodate JALR
 		if (controller.regWrite == 1) {
-			int written = myCPU.writeBackToReg(currInst.r.rd, writeData);
+			int32_t written = myCPU.writeBackToReg(currInst.r.rd, writeData);
 			cout << "Write Back to Register: x" << currInst.r.rd << " Data: " << writeData << endl;
 		}
 
-		// default PC += 4
-		myCPU.incPC();
-		if (myCPU.readPC() >= maxPC)	// changed from > to >=
-			break;
+		// UPDATE PC (NEW)
+		unsigned long nextPC = controller.branchMux(aluResult, myCPU.immGen(currInst));
+		nextPC = controller.aluToPCMux(static_cast<int32_t>(aluResult), nextPC);
+		myCPU.setPC(nextPC);
 	}
 	int a0 = myCPU.a0val();
 	int a1 = myCPU.a1val();
@@ -145,5 +150,4 @@ int main(int argc, char* argv[])
 	cout << "(" << a0 << "," << a1 << ")" << endl;
 	
 	return 0;
-
 }
