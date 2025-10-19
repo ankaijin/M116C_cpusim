@@ -95,7 +95,9 @@ class Controller {
         string getInstrType(instruction instr);
         void setControlSignals(string instrType); // set control signals based on opcode
         // aluSrcMux (selects between register value and immediate for ALU input)
-        int aluSrcMux(int rs2, int immValue);   // store in main as ALU input 2
+        int aluSrcMux(int rs2, int immValue);
+        // memToRegMux (selects between ALU result and memory data for write back)
+        int32_t memToRegMux(int32_t aluResult, int32_t memData);
 };
 
 // ALU Controller class
@@ -138,10 +140,14 @@ class CPU {
         int32_t ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluControl);
         // memory access (determined by MemWrite and MemRead signal)
         int32_t readDataMem(uint32_t address, int funct3);
-        void writeDataMem(uint32_t address, int32_t data);
-        // memToRegMux (selects between ALU result and memory data for write back)
-        
+        void writeDataMem(uint32_t address, int32_t data, int funct3);
+        // write back output of memToRegMux
+        int32_t writeBackToReg(unsigned int rd, int32_t write);
         // branchMux (selects next PC based on branch decision)
+
+        // return values
+        int32_t a0val();
+        int32_t a1val();
 };
 
 // add other functions and objects here

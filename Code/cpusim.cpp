@@ -45,17 +45,16 @@ int main(int argc, char* argv[])
 	string line;
 	int i = 0;
 	while (infile) {
-			// read file instructions are in little endian format
-			string temp[4];
-			// reverse little endian to big endian
-			for (int j = 0; j < 4; j++) {
-				infile >> line;
-				temp[3 - j] = line;
-			}
-			instMem.push_back(temp[0] + temp[1] + temp[2] + temp[3]);
+		// read file instructions are in little endian format
+		// reverse little endian to big endian
+		while (true) {
+			string b0, b1, b2, b3;        // b0 = least significant byte on disk
+			if (!(infile >> b0 >> b1 >> b2 >> b3)) break;  // stop cleanly at EOF/short read
+			instMem.push_back(b3 + b2 + b1 + b0);          // big-endian string
+			cout << instMem.back() << '\n';
 			i += 1;
-			cout << instMem[i - 1] << endl;
 		}
+	}
 	int maxPC = i;
 	cout << endl;
 
@@ -93,6 +92,9 @@ int main(int argc, char* argv[])
 	{
 		// fetch
 		currInst.mcode = myCPU.fetchInstruction();
+		if (currInst.mcode == 0) {
+			break; // halt on all zeros instruction
+		}
 
 		// decode
 		cout << "==========================" << endl;
@@ -103,6 +105,8 @@ int main(int argc, char* argv[])
 		cout << "Immediate: " << myCPU.immGen(currInst) << endl;
 		int32_t aluInput1 = myCPU.rs1data(currInst.r.rs1);
 		int32_t aluInput2 = controller.aluSrcMux(currInst.r.rs2, myCPU.immGen(currInst));
+		cout << "Rs1 num: " << currInst.r.rs1 << endl;
+		cout << "ALU Input 1: " << aluInput1 << endl;
 		cout << "Rs2 num: " << currInst.r.rs2 << endl;
 		cout << "ALU Input 2: " << aluInput2 << endl;
 
@@ -112,25 +116,31 @@ int main(int argc, char* argv[])
 		int32_t aluResult = myCPU.ALUOperation(aluInput1, aluInput2, aluCtrl5bit);
 		cout << "ALU Result: " << aluResult << endl;
 
-		// memory access
+		// memory access (Load and Store) NEED TO TEST
+		int32_t memData = 0;
 		if (controller.memRead == 1) {
-			int32_t memData = myCPU.readDataMem(static_cast<uint32_t>(aluResult), currInst.r.funct3);
+			memData = myCPU.readDataMem(static_cast<uint32_t>(aluResult), currInst.r.funct3);
 			cout << "Memory Read Data: " << memData << endl;
 		}
 		if (controller.memWrite == 1) {
-			myCPU.writeDataMem(static_cast<uint32_t>(aluResult), myCPU.rs2data(currInst.r.rs2));
+			myCPU.writeDataMem(static_cast<uint32_t>(aluResult), myCPU.rs2data(currInst.r.rs2), currInst.r.funct3);
 			cout << "Memory Write at Address: " << aluResult << " Data: " << myCPU.rs2data(currInst.r.rs2) << endl;
 		}
 
-		// write back
+		// write back (if mem not read, aluResult is selected anyway)
+		int32_t writeData = controller.memToRegMux(aluResult, memData);
+		if (controller.regWrite == 1) {
+			int written = myCPU.writeBackToReg(currInst.r.rd, writeData);
+			cout << "Write Back to Register: x" << currInst.r.rd << " Data: " << writeData << endl;
+		}
 
 		// default PC += 4
 		myCPU.incPC();
 		if (myCPU.readPC() >= maxPC)	// changed from > to >=
 			break;
 	}
-	int a0 = 0;
-	int a1 = 0;
+	int a0 = myCPU.a0val();
+	int a1 = myCPU.a1val();
 	// print the results (you should replace a0 and a1 with your own variables that point to a0 and a1)
 	cout << "(" << a0 << "," << a1 << ")" << endl;
 	

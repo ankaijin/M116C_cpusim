@@ -90,6 +90,11 @@ int Controller::aluSrcMux(int rs2, int immValue) {
 	else return immValue;
 }
 
+int32_t Controller::memToRegMux(int32_t aluResult, int32_t memData) {
+	if (memToReg == 1) return memData;
+	else return aluResult;
+}
+
 ALUController::ALUController() : cpu(nullptr), ALUCtrlSig(-1) {}
 
 unsigned int ALUController::setALUCtrlSig(int funct3, int aluOp) {
@@ -152,7 +157,7 @@ uint32_t CPU::fetchInstruction()
 }
 
 int32_t CPU::immGen(instruction instr) {
-	uint32_t immediate = 0;	// does int or uint matter?
+	uint32_t immediate = 0;
 	switch (instr.opcode) {
 		case 0b0010011: // I-type
 		case 0b0000011: // Load
@@ -168,7 +173,7 @@ int32_t CPU::immGen(instruction instr) {
 			break;
 		case 0b1100011: // B-type
 			immediate = (instr.b.imm12 << 12) | (instr.b.imm10_5 << 5) |
-				  (instr.b.imm4_1 << 1) | (instr.b.imm11 << 11);	// seems legit
+				  (instr.b.imm4_1 << 1) | (instr.b.imm11 << 11);
 			// Sign-extend
 			if (immediate & 0x1000) immediate |= 0xFFFFE000;
 			break;
@@ -181,11 +186,11 @@ int32_t CPU::immGen(instruction instr) {
 	return static_cast<int32_t>(immediate);
 }
 
-int CPU::rs1data(unsigned int rs1) {
+int32_t CPU::rs1data(unsigned int rs1) {
 	return registerFile[rs1];
 }
 
-int CPU::rs2data(unsigned int rs2) {
+int32_t CPU::rs2data(unsigned int rs2) {
 	return registerFile[rs2];
 }
 
@@ -193,7 +198,7 @@ int32_t CPU::ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluCo
 	// names for each control signal for clarity
 	const unsigned int ADD		= 0b00000; // load/store address add
 	const unsigned int SUB      = 0b00100; // branch compare
-	const unsigned int ADD_OP   = 0b01000; // R-type ADD
+	const unsigned int SUB_OP   = 0b01000; // R-type SUB
 	const unsigned int AND_OP   = 0b01001; // R-type AND
 	const unsigned int SRA_OP   = 0b01010; // R-type SRA
 	const unsigned int ADDI     = 0b01100; // I-type ADDI
@@ -203,10 +208,10 @@ int32_t CPU::ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluCo
 
 	switch (aluControl) {
 		case ADD:
-		case ADD_OP:
 		case ADDI:
 			return operand1 + operand2;
 		case SUB:
+		case SUB_OP:
 			return operand1 - operand2;
 		case AND_OP:
 			return operand1 & operand2;
@@ -232,27 +237,49 @@ int32_t CPU::ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluCo
 	}
 }
 
-int32_t CPU::readDataMem(uint32_t address, int funct3) {	// check
+int32_t CPU::readDataMem(uint32_t address, int funct3) {
 	int32_t data = 0;
 	if (funct3 == 0b010) {
-		// Read 4 bytes from dataMemory (little-endian)
+		// LW: Read 4 bytes from dataMemory (little-endian)
 		for (int i = 0; i < 4; i++) {
-			data |= (static_cast<int32_t>(dataMemory[address + i]) << (i * 8));
+			// unordered_map returns 0 for non-existent keys with default []
+			uint8_t byte = dataMemory[address + i];
+			data |= (static_cast<uint32_t>(byte) << (i * 8));
 		}
 	}
 	else if (funct3 == 0b100) {
-		// Read 1 byte, unsigned, from dataMemory (little-endian)
+		// LBU: Read 1 byte, unsigned (zero-extend)
 		data = static_cast<uint8_t>(dataMemory[address]);
-		// zero-extend
-		data = static_cast<uint32_t>(data);
 	}
-	// return 32-bit data
-	return static_cast<int32_t>(data);
+	return data;
 }
 
-void CPU::writeDataMem(uint32_t address, int32_t data) {	// check
+void CPU::writeDataMem(uint32_t address, int32_t data, int funct3) {	// check
 	// Write 4 bytes to dataMemory (little-endian)
-	for (int i = 0; i < 4; i++) {
-		dataMemory[address + i] = static_cast<uint8_t>((data >> (i * 8)) & 0xFF);
+	if (funct3 == 0b010) {
+		for (int i = 0; i < 4; i++) {
+			dataMemory[address + i] = static_cast<int8_t>((data >> (i * 8)) & 0xFF);
+		}
 	}
+	else if (funct3 == 0b001) {
+		// Write 2 bytes to dataMemory (little-endian)
+		for (int i = 0; i < 2; i++) {
+			dataMemory[address + i] = static_cast<int8_t>((data >> (i * 8)) & 0xFF);
+		}
+	}
+}
+
+int32_t CPU::writeBackToReg(unsigned int rd, int32_t write) {
+	if (rd != 0 && rd < 32) {
+		registerFile[rd] = write;
+	}
+	return registerFile[rd];
+}
+
+int32_t CPU::a0val() {
+	return registerFile[10]; // x10 is a0
+}
+
+int32_t CPU::a1val() {
+	return registerFile[11]; // x11 is a1
 }
