@@ -77,9 +77,11 @@ int main(int argc, char* argv[])
 	CPU class also has different functions for each stage (e.g., fetching an instruction, decoding, etc.).
 	*/
 
-	CPU myCPU(instMemBin);  // call the approriate constructor here to initialize the processor...  
-	myCPU.controller.cpu = &myCPU;
-	myCPU.aluController.cpu = &myCPU;
+	CPU myCPU(instMemBin);  // call the approriate constructor here to initialize the processor... 
+	Controller controller;
+	ALUController aluController; 
+	controller.cpu = &myCPU;
+	aluController.cpu = &myCPU;
 
 	// make sure to create a variable for PC and resets it to zero (e.g., unsigned int PC = 0);
 
@@ -93,13 +95,27 @@ int main(int argc, char* argv[])
 		currInst.mcode = myCPU.fetchInstruction();
 
 		// decode
+		cout << "==========================" << endl;
 		cout << "PC: " << myCPU.readPC() << " Instruction: " << bitset<32>(currInst.mcode) << endl;
-		myCPU.controller.setControlSignals(myCPU.controller.getInstrType(currInst));
+		controller.setControlSignals(controller.getInstrType(currInst));
 
+		// execute
 		cout << "Immediate: " << myCPU.immGen(currInst) << endl;
-		int aluInput2 = myCPU.aluSrcMux(currInst.r.rs2, myCPU.immGen(currInst));
-		cout << "Rs2 num: " <<currInst.r.rs2 << endl;
+		int32_t aluInput1 = myCPU.rs1data(currInst.r.rs1);
+		int32_t aluInput2 = controller.aluSrcMux(currInst.r.rs2, myCPU.immGen(currInst));
+		cout << "Rs2 num: " << currInst.r.rs2 << endl;
 		cout << "ALU Input 2: " << aluInput2 << endl;
+
+		unsigned int aluCtrl5bit = aluController.setALUCtrlSig(currInst.r.funct3, controller.aluOp);
+		cout << "ALU Control Signal: " << bitset<5>(aluCtrl5bit) << endl;
+
+		int32_t aluResult = myCPU.ALUOperation(aluInput1, aluInput2, aluCtrl5bit);
+		cout << "ALU Result: " << aluResult << endl;
+
+		// memory access
+		
+
+		// write back
 
 		// default PC += 4
 		myCPU.incPC();

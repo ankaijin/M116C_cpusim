@@ -3,13 +3,12 @@
 Controller::Controller() : cpu(nullptr), branch(0), memRead(0), memToReg(0),
         aluOp(0), memWrite(0), aluSrc(0), regWrite(0) {}
 
-ALUController::ALUController() : cpu(nullptr), ALUCtrlSig(-1) {}
-
 string Controller::getInstrType(instruction instr) {
 	switch (instr.opcode) {
 		case 0b0110011: return "R"; // R-type
 		case 0b0010011: return "I"; // I-type
 		case 0b0000011: return "Load"; // Load
+		case 0b1100111: return "JALR"; // JALR
 		case 0b0100011: return "S"; // S-type
 		case 0b1100011: return "B"; // B-type
 		case 0b0110111: return "U"; // U-type
@@ -46,6 +45,15 @@ void Controller::setControlSignals(string instrType) {
 		branch = 0;
 		aluOp = 0; // ALU does addition for address calculation
 	}
+	else if (instrType == "JALR") {
+		aluSrc = 1;
+		regWrite = 1;
+		memRead = 0;
+		memWrite = 0;
+		memToReg = 0;
+		branch = 1;	// branch is 1
+		aluOp = 0; // use same aluOp as load and store instrs. (addition)
+	}
 	else if (instrType == "S") {
 		aluSrc = 1;
 		regWrite = 0;
@@ -74,12 +82,52 @@ void Controller::setControlSignals(string instrType) {
 		aluOp = 4; // ALU does left shift for address calculation
 	}
 	// do nothing for invalid instruction type
+	else aluOp = -1;
+}
+
+int Controller::aluSrcMux(int rs2, int immValue) {
+	if (aluSrc == 0) return cpu->rs2data(rs2);
+	else return immValue;
+}
+
+ALUController::ALUController() : cpu(nullptr), ALUCtrlSig(-1) {}
+
+unsigned int ALUController::setALUCtrlSig(int funct3, int aluOp) {
+	// R-type instructions
+	if (aluOp == 2) {
+		switch (funct3) {
+			case 0b000: return 0b01000; // ADD
+			case 0b111: return 0b01001; // AND
+			case 0b101: return 0b01010; // SRA
+			default: return -1; // Invalid funct3 ??
+		}
+	}
+	// I-type instructions
+	else if (aluOp == 3) {
+		switch (funct3) {
+			case 0b000: return 0b01100; // ADDI
+			case 0b110: return 0b01101; // ORI
+			case 0b011: return 0b01110; // SLTIU
+			default: return -1; // Invalid funct3 ??
+		}
+	}
+	// Load/Store instructions
+	else if (aluOp == 0) {
+		return 0b00000; // ADD for address calculation
+	}
+	// Branch instructions
+	else if (aluOp == 1) {
+		return 0b00100; // SUB for comparison
+	}
+	// U-type instructions (LUI)
+	else if (aluOp == 4) {
+		return 0b10000; // LUI operation
+	}
+	return -1; // Invalid aluOp
 }
 
 CPU::CPU(vector<uint32_t> iMem) : iMemory(iMem), PC(0)
 {
-	controller = Controller();
-	controller.cpu = this;
 	for (int i = 0; i < 4096; i++) // copy instrMEM
 	{
 		dMemory[i] = (0);
@@ -108,7 +156,7 @@ uint32_t CPU::fetchInstruction()
 }
 
 int32_t CPU::immGen(instruction instr) {
-	uint32_t immediate = 0;
+	uint32_t immediate = 0;	// does int or uint matter?
 	switch (instr.opcode) {
 		case 0b0010011: // I-type
 		case 0b0000011: // Load
@@ -145,7 +193,45 @@ int CPU::rs2data(unsigned int rs2) {
 	return registerFile[rs2];
 }
 
-int CPU::aluSrcMux(int rs2, int immValue) {
-	if (controller.aluSrc == 0) return rs2data(rs2);
-	else return immValue;
+int32_t CPU::ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluControl) {
+	// names for each control signal for clarity
+	const unsigned int ADD		= 0b00000; // load/store address add
+	const unsigned int SUB      = 0b00100; // branch compare
+	const unsigned int ADD_OP   = 0b01000; // R-type ADD
+	const unsigned int AND_OP   = 0b01001; // R-type AND
+	const unsigned int SRA_OP   = 0b01010; // R-type SRA
+	const unsigned int ADDI     = 0b01100; // I-type ADDI
+	const unsigned int ORI      = 0b01101; // I-type ORI
+	const unsigned int SLTIU    = 0b01110; // I-type SLTIU (unsigned compare)
+	const unsigned int LUI_OP   = 0b10000; // U-type LUI
+
+	switch (aluControl) {
+		case ADD:
+		case ADD_OP:
+		case ADDI:
+			return operand1 + operand2;
+		case SUB:
+			return operand1 - operand2;
+		case AND_OP:
+			return operand1 & operand2;
+		case ORI:
+			return operand1 | operand2;
+		case SRA_OP: {
+			// Arithmetic right shift by lower 5 bits of operand2 (RISC-V shamt is 5 bits for RV32)
+			int32_t a = operand1;
+			unsigned int shamt = static_cast<unsigned int>(operand2) & 0x1F;
+			return a >> shamt;
+		}
+		case SLTIU: {
+			uint32_t ua = static_cast<uint32_t>(operand1);
+			uint32_t ub = static_cast<uint32_t>(operand2);
+			return (ua < ub) ? 1 : 0;
+		}
+		case LUI_OP:
+			// LUI writes the immediate (operand2 should already be imm << 12); ignore operand1
+			return operand2;
+		default:
+			// Unknown control; return 0 as a safe default ??
+			return 0;
+	}
 }

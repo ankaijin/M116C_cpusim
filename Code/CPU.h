@@ -79,8 +79,8 @@ class CPU; // forward declaration
 class Controller {
     private:    
         friend class CPU;
-        Controller();
     public:
+        Controller();
         CPU* cpu;
         int branch;
         int memRead;
@@ -93,6 +93,8 @@ class Controller {
 
         string getInstrType(instruction instr);
         void setControlSignals(string instrType); // set control signals based on opcode
+        // aluSrcMux (selects between register value and immediate for ALU input)
+        int aluSrcMux(int rs2, int immValue);   // store in main as ALU input 2
 };
 
 // ALU Controller class
@@ -101,27 +103,25 @@ class Controller {
 class ALUController {
     private:
         friend class CPU;
-        ALUController();
     public:
+        ALUController();
         CPU* cpu;
-        int ALUCtrlSig;
-        int setALUCtrlSig(int funct3, int funct7, int aluOp);
+        unsigned int ALUCtrlSig;
+        // note: funct7 not needed for supported instructions
+        unsigned int setALUCtrlSig(int funct3, int aluOp);
 };
 
 class CPU {
     private:
         // DATAPATH COMPONENTS
-        int dMemory[4096]; // data memory byte addressable in little endian fashion;
+        int32_t dMemory[4096]; // data memory byte addressable in little endian fashion;
         vector<uint32_t> iMemory; // instruction memory in binary
-        int registerFile[32]; // 32 registers, 32 bits each, don't write to 0th element
+        int32_t registerFile[32]; // 32 registers, 32 bits each, don't write to 0th element
         unsigned long PC; // pc
 
     public:
         // Constructor that initializes instruction memory and PC
         CPU(vector<uint32_t> iMemory);
-        // Constructor for controller
-        Controller controller;
-        ALUController aluController;
 
         // CPU FUNCTIONS
         unsigned long readPC();
@@ -131,14 +131,14 @@ class CPU {
         // Immediate Generator function (takes 32-bit instruction as input)
         int32_t immGen(instruction instr);
         // read data from rs1 and rs2
-        int rs1data(unsigned int rs1);
-        int rs2data(unsigned int rs2);
-        // aluSrcMux (selects between register value and immediate for ALU input)
-        int aluSrcMux(int rs2, int immValue);   // store in main as ALU input 2
+        int32_t rs1data(unsigned int rs1);
+        int32_t rs2data(unsigned int rs2);
         // ALU operation (takes in two operands and ALU control signal)
-        int ALUOperation(int operand1, int operand2, int aluControl);
+        int32_t ALUOperation(int32_t operand1, int32_t operand2, unsigned int aluControl);
         // memory access (determined by MemWrite signal)
+        int32_t readDataMem(int32_t address);
         // memToRegMux (selects between ALU result and memory data for write back)
+        
         // branchMux (selects next PC based on branch decision)
 };
 
