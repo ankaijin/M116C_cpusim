@@ -1,6 +1,6 @@
 #include "CPU.h"
 
-Controller::Controller() : cpu(nullptr), branch(0), memRead(0), memToReg(0),
+Controller::Controller() : cpu(nullptr), jalr(0), branch(0), memRead(0), memToReg(0),
         aluOp(0), memWrite(0), aluSrc(0), regWrite(0) {}
 
 string Controller::getInstrType(instruction instr) {
